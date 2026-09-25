@@ -6,6 +6,9 @@ let pendingVideoId = "";
 let currentTime = 0;
 let refreshTimer;
 let adVideoId = "";
+let adActive = false;
+let openedForAdVideoId = "";
+let pausedForYouTube = false;
 
 function normalize(value) {
   return value
@@ -175,6 +178,9 @@ function markPlayerReady() {
     sendPlayerCommand("loadVideoById", [pendingVideoId]);
     pendingVideoId = "";
   }
+  if (pausedForYouTube) {
+    sendPlayerCommand("pauseVideo");
+  }
 }
 
 function updateButtons() {
@@ -199,6 +205,9 @@ function loadVideo(videoId) {
   isPlaying = true;
   currentTime = 0;
   adVideoId = "";
+  adActive = false;
+  openedForAdVideoId = "";
+  pausedForYouTube = false;
 
   if (!player) {
     createPlayer(videoId);
@@ -221,6 +230,7 @@ function toggleVideo(videoId) {
     sendPlayerCommand("pauseVideo");
     isPlaying = false;
   } else {
+    pausedForYouTube = false;
     sendPlayerCommand("playVideo");
     isPlaying = true;
   }
@@ -298,6 +308,39 @@ function createSeekButton(track, video) {
   return button;
 }
 
+function openYouTubeVideo(videoId) {
+  if (videoId === activeVideoId) {
+    pausedForYouTube = true;
+    openedForAdVideoId = videoId;
+  }
+
+  if (player) {
+    sendPlayerCommand("pauseVideo");
+    isPlaying = false;
+    updateButtons();
+  }
+
+  chrome.runtime.sendMessage({ type: "dtp-open-youtube", videoId });
+}
+
+function createYouTubeButton(track, video) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "dtp-youtube-button";
+  button.textContent = "YT";
+  button.setAttribute("aria-label", `Open ${track.title || track.position} on YouTube`);
+  button.title = "Open matched video on YouTube";
+
+  if (video) {
+    button.addEventListener("click", () => openYouTubeVideo(video.id));
+  } else {
+    button.disabled = true;
+    button.title = "No matching video found";
+  }
+
+  return button;
+}
+
 function installButtons() {
   const videos = getVideos();
   const tracks = getTracks();
@@ -318,7 +361,8 @@ function installButtons() {
       positionCell.append(
         createButton(track, video),
         createAdLabel(video),
-        createSeekButton(track, video)
+        createSeekButton(track, video),
+        createYouTubeButton(track, video)
       );
     }
   });
@@ -346,8 +390,18 @@ function handleExtensionMessage(message) {
     return;
   }
 
-  adVideoId = message.active ? activeVideoId : "";
-  sendPlayerCommand(message.active ? "mute" : "unMute");
+  adActive = message.active;
+  adVideoId = adActive ? activeVideoId : "";
+  if (adActive) {
+    sendPlayerCommand("mute");
+    sendPlayerCommand("pauseVideo");
+    isPlaying = false;
+    if (openedForAdVideoId !== activeVideoId) {
+      openYouTubeVideo(activeVideoId);
+    }
+  } else {
+    sendPlayerCommand("unMute");
+  }
   updateButtons();
 }
 
@@ -378,7 +432,12 @@ function handlePlayerMessage(event) {
   }
 
   if (state === 1) {
-    isPlaying = true;
+    if (adActive || pausedForYouTube) {
+      sendPlayerCommand("pauseVideo");
+      isPlaying = false;
+    } else {
+      isPlaying = true;
+    }
     updateButtons();
   } else if (state === 0 || state === 2) {
     isPlaying = false;

@@ -30,6 +30,11 @@ if (dtpPlayer) {
 
     if (showingAd) {
       setVideoMuted(true);
+      document.querySelectorAll("video").forEach((video) => {
+        if (!video.paused) {
+          video.pause();
+        }
+      });
       clickSkipButton();
     }
 

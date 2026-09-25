@@ -12,9 +12,20 @@ chrome.webRequest.onBeforeRequest.addListener(
 );
 
 chrome.runtime.onMessage.addListener((message, sender) => {
-  if (message.type !== "dtp-youtube-ad-state" || !sender.tab) {
+  if (!sender.tab || !Number.isInteger(sender.tab.id)) {
     return;
   }
 
-  chrome.tabs.sendMessage(sender.tab.id, message, { frameId: 0 });
+  if (message.type === "dtp-youtube-ad-state") {
+    if (sender.url && sender.url.startsWith("https://www.youtube-nocookie.com/embed/") && sender.url.includes("dtp=1")) {
+      chrome.tabs.sendMessage(sender.tab.id, message, { frameId: 0 });
+    }
+    return;
+  }
+
+  if (message.type === "dtp-open-youtube" && sender.frameId === 0 &&
+      /^https:\/\/(www\.)?discogs\.com\/release\//.test(sender.url || "") &&
+      typeof message.videoId === "string" && /^[a-zA-Z0-9_-]+$/.test(message.videoId)) {
+    chrome.tabs.create({ url: `https://www.youtube.com/watch?v=${message.videoId}`, active: true });
+  }
 });
