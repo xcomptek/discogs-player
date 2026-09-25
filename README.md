@@ -23,7 +23,7 @@ When a Discogs release contains matching YouTube videos, Discogs Player adds con
 
 Discogs Player is not currently available in the Chrome Web Store. Install it from the source code using Chrome's Developer mode:
 
-1. Download the source code from [here](https://t.me/dakou_cd/172).
+1. Download the source code from [here](https://github.com/xcomptek/discogs-player/releases).
 2. If you downloaded a ZIP file, extract it to a folder on your computer.
 3. Open Google Chrome and go to [`chrome://extensions`](chrome://extensions).
 4. Turn on **Developer mode** using the switch in the top-right corner.
